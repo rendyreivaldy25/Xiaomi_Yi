@@ -7,8 +7,11 @@ AppVersion = "0.6.10"
  
  
 
-import base64, functools, hashlib, json, os, platform, re, select, socket, subprocess, sys, tempfile, threading, time, tkFileDialog, tkMessageBox, urllib2, webbrowser, zlib
-from Tkinter import *
+import base64, functools, hashlib, json, os, platform, re, select, socket, subprocess, sys, tempfile, threading, time, webbrowser, zlib
+from urllib.request import urlopen
+from tkinter import *
+from tkinter import filedialog
+from tkinter import messagebox
 from operator import itemgetter
 
 class App:
@@ -203,11 +206,11 @@ class App:
 
 	def UpdateCheck(self):
 		try:
-			newversion = urllib2.urlopen(self.UpdateUrl, timeout=2).read()
+			newversion = urlopen(self.UpdateUrl, timeout=2).read()
 		except Exception:
 			newversion = "0"
-		if newversion > AppVersion:
-			if tkMessageBox.askyesno("New version found", "NEW VERSION FOUND (%s)\nYours is %s\n\nOpen download page?" %(newversion, AppVersion)):
+		if newversion.decode("utf-8")  > AppVersion:
+			if messagebox.askyesno("New version found", "NEW VERSION FOUND (%s)\nYours is %s\n\nOpen download page?" %(newversion, AppVersion)):
 				webbrowser.open_new(self.GitUrl)
 
 
@@ -246,7 +249,7 @@ class App:
 	
 	
 	def AboutProg(self):
-		tkMessageBox.showinfo("About", "Control&Configure | ver. %s\nCreated by Andy_S, 2015\n\nandys@deltaflyer.cz" %AppVersion)
+		messagebox.showinfo("About", "Control&Configure | ver. %s\nCreated by Andy_S, 2015\n\nandys@deltaflyer.cz" %AppVersion)
 	
 	def CamConnect(self):
 		try:
@@ -312,7 +315,7 @@ class App:
 			if self.DebugMode:
 				self.DebugLog("CamConn", e)
 			self.connected = False
-			tkMessageBox.showerror("Connect", "Cannot connect to the address specified")
+			messagebox.showerror("Connect", "Cannot connect to the address specified")
 			self.srv.close()
 	
 
@@ -372,7 +375,7 @@ class App:
 					except Exception as e:
 						if self.DebugMode:
 							self.DebugLog("UnkData", e)
-						print data
+						print(data)
 		except Exception:
 			self.connected = False
 
@@ -383,7 +386,7 @@ class App:
 		self.Jsoncounter = 0
 		self.Jsonflip = 0
 		initcounter = 0
-		self.srv.send('{"msg_id":257,"token":0}') #auth to the camera
+		self.srv.send(b'{"msg_id":257,"token":0}') #auth to the camera
 		while initcounter < 300:
 			self.JsonLoop()
 			initcounter += 1
@@ -405,7 +408,7 @@ class App:
 		while self.JsonData[msgid]=="":continue
 		if self.JsonData[msgid]["rval"] == -4: #wrong token, ackquire new one & resend - "workaround" for camera insisting on tokens
 			self.token = ""
-			self.srv.send('{"msg_id":257,"token":0}')
+			self.srv.send(b'{"msg_id":257,"token":0}')
 			while self.token=="":continue
 			Jtosend["token"] = self.token
 			tosend = json.dumps(Jtosend)
@@ -483,17 +486,17 @@ class App:
 		for pname in sorted(self.camconfig):
 			pvalue = self.camconfig[pname]
 			toshow += "%s: %s\n" %(pname, pvalue)
-		tkMessageBox.showinfo("All current camera variables", toshow)
+		messagebox.showinfo("All current camera variables", toshow)
 			
 	def ExpertTelnet(self):
-		tosend = '{"msg_id":1283,"token":%s,"param":"."}' %self.token
+		tosend = b'{"msg_id":1283,"token":%s,"param":"."}' %self.token
 		self.curPwd = self.Comm(tosend)["pwd"].replace("/","\\/")
-		tosend = '{"msg_id":1283,"token":%s,"param":"\/tmp\/fuse_d"}' %self.token
+		tosend = b'{"msg_id":1283,"token":%s,"param":"\/tmp\/fuse_d"}' %self.token
 		self.Comm(tosend)
-		tosend = '{"msg_id":1286,"token":%s,"param":"enable_info_display.script", "offset":0, "size":0, "md5sum":"d41d8cd98f00b204e9800998ecf8427e"}' %self.token
+		tosend = b'{"msg_id":1286,"token":%s,"param":"enable_info_display.script", "offset":0, "size":0, "md5sum":"d41d8cd98f00b204e9800998ecf8427e"}' %self.token
 		self.Comm(tosend)
-		if tkMessageBox.askyesno("Restart Camera", "You have to reboot camera for telnet to be enabled.\n\nReboot now? (C&C will close)"):
-			tosend = '{"msg_id":2,"token":%s, "type":"dev_reboot", "param":"on"}' %self.token
+		if messagebox.askyesno("Restart Camera", "You have to reboot camera for telnet to be enabled.\n\nReboot now? (C&C will close)"):
+			tosend = b'{"msg_id":2,"token":%s, "type":"dev_reboot", "param":"on"}' %self.token
 			self.srv.send(tosend)
 			self.quit()
 		else:
@@ -622,7 +625,7 @@ class App:
 		
 	
 	def ExpertEnable(self):
-		if tkMessageBox.askyesno("Enable expert mode", "Are you sure you want to\nENABLE EXPERT MODE?\n\nThis will enable potentionaly dangerous,\nbut also enhanced and useful features!\n\nBy accepting this you accept\nall responsibility for your actions you do\nin expert mode.\n\nAuthor of this program does not take ANY responsibility\nfor potentional damage to your camera\ncaused by your improper usage of this software."):
+		if messagebox.askyesno("Enable expert mode", "Are you sure you want to\nENABLE EXPERT MODE?\n\nThis will enable potentionaly dangerous,\nbut also enhanced and useful features!\n\nBy accepting this you accept\nall responsibility for your actions you do\nin expert mode.\n\nAuthor of this program does not take ANY responsibility\nfor potentional damage to your camera\ncaused by your improper usage of this software."):
 			self.ExpertMode = self.camconfig["serial_number"]
 			tosend = {"ExpertMode":self.ExpertMode}
 			self.Settings(add=tosend)
@@ -641,12 +644,12 @@ class App:
 		self.ZoomLevelValue = self.ZoomLevel.get()
 
 	def ActionInfo(self):
-		tkMessageBox.showinfo("Camera information", "SW ver: %s\nHW ver: %s\nSN: %s" %(self.camconfig["sw_version"], self.camconfig["hw_version"], self.camconfig["serial_number"]))
+		messagebox.showinfo("Camera information", "SW ver: %s\nHW ver: %s\nSN: %s" %(self.camconfig["sw_version"], self.camconfig["hw_version"], self.camconfig["serial_number"]))
 		self.UpdateUsage()
 
 
 	def ActionForceFormat(self):
-		if tkMessageBox.askyesno("Format memory card", "Memory card is not formatted\nFORMAT MEMORY CARD NOW?\n\nThis action can't be undone\nALL PHOTOS & VIDEOS WILL BE LOST!"):
+		if messagebox.askyesno("Format memory card", "Memory card is not formatted\nFORMAT MEMORY CARD NOW?\n\nThis action can't be undone\nALL PHOTOS & VIDEOS WILL BE LOST!"):
 			tosend = '{"msg_id":4,"token":%s}' %self.token
 			self.Comm(tosend)
 			return(True)
@@ -654,7 +657,7 @@ class App:
 			return(False)
 
 	def ActionFormat(self):
-		if tkMessageBox.askyesno("Format memory card", "Are you sure you want to\nFORMAT MEMORY CARD?\n\nThis action can't be undone\nALL PHOTOS & VIDEOS WILL BE LOST!"):
+		if messagebox.askyesno("Format memory card", "Are you sure you want to\nFORMAT MEMORY CARD?\n\nThis action can't be undone\nALL PHOTOS & VIDEOS WILL BE LOST!"):
 			tosend = '{"msg_id":4,"token":%s}' %self.token
 			self.Comm(tosend)
 		self.UpdateUsage()
@@ -662,14 +665,14 @@ class App:
 			self.FilePrintList()
 
 	def ActionReboot(self):
-		if tkMessageBox.askyesno("Reboot camera", "Are you sure you want to\nreboot camera?\n\nThis will close C&C"):
-			tosend = '{"msg_id":2,"token":%s, "type":"dev_reboot", "param":"on"}' %self.token
+		if messagebox.askyesno("Reboot camera", "Are you sure you want to\nreboot camera?\n\nThis will close C&C"):
+			tosend = b'{"msg_id":2,"token":%s, "type":"dev_reboot", "param":"on"}' %self.token
 			self.srv.send(tosend)
 			self.quit()
 
 	def ActionFactory(self):
-		if tkMessageBox.askyesno("Reboot camera", "Are you sure you want to\nRESET CAMERA TO FACTORY SETTINGS?\n\nThis will close C&C"):
-			tosend = '{"msg_id":2,"token":%s, "type":"restore_factory_settings", "param":"on"}' %self.token
+		if messagebox.askyesno("Reboot camera", "Are you sure you want to\nRESET CAMERA TO FACTORY SETTINGS?\n\nThis will close C&C"):
+			tosend = b'{"msg_id":2,"token":%s, "type":"restore_factory_settings", "param":"on"}' %self.token
 			self.srv.send(tosend)
 			self.quit()
 
@@ -716,7 +719,7 @@ class App:
 					torun = '"%s" rtsp://%s:554/live' %(self.custom_vlc_path, self.camaddr)
 					subprocess.Popen(torun, shell=True)
 				else:
-					tkMessageBox.showinfo("Live View", "VLC Player not found\nUse your preferred player to view:\n rtsp://%s:554/live" %(self.camaddr))
+					messagebox.showinfo("Live View", "VLC Player not found\nUse your preferred player to view:\n rtsp://%s:554/live" %(self.camaddr))
 			else:
 				mysys = platform.system()
 				if mysys == "Windows":
@@ -728,19 +731,19 @@ class App:
 							torun = '"c:/Program Files (x86)/VideoLan/VLC/vlc.exe" rtsp://%s:554/live' %(self.camaddr)
 							subprocess.Popen(torun, shell=True)
 						else:
-							tkMessageBox.showinfo("Live View", "VLC Player not found\nUse your preferred player to view:\n rtsp://%s:554/live" %(self.camaddr))
+							messagebox.showinfo("Live View", "VLC Player not found\nUse your preferred player to view:\n rtsp://%s:554/live" %(self.camaddr))
 				elif mysys == "Darwin":
 					if os.path.isfile("/Applications/VLC.app/Contents/MacOS/VLC"):
 						torun = '"/Applications/VLC.app/Contents/MacOS/VLC" rtsp://%s:554/live' %(self.camaddr)
 						subprocess.Popen(torun, shell=True)
 					else:
-						tkMessageBox.showinfo("Live View", "VLC Player not found\nUse your preferred player to view:\n rtsp://%s:554/live" %(self.camaddr))
+						messagebox.showinfo("Live View", "VLC Player not found\nUse your preferred player to view:\n rtsp://%s:554/live" %(self.camaddr))
 				else:
-					tkMessageBox.showinfo("Live View", "VLC Player not found\nUse your preferred player to view:\n rtsp://%s:554/live" %(self.camaddr))
+					messagebox.showinfo("Live View", "VLC Player not found\nUse your preferred player to view:\n rtsp://%s:554/live" %(self.camaddr))
 		except Exception as e:
 			if self.DebugMode:
 				self.DebugLog("VlcNotFound", e)
-			tkMessageBox.showinfo("Live View", "VLC Player not found\nUse your preferred player to view:\n rtsp://%s:554/live" %(self.camaddr))
+			messagebox.showinfo("Live View", "VLC Player not found\nUse your preferred player to view:\n rtsp://%s:554/live" %(self.camaddr))
 	
 
 	def MenuConfig_Apply(self, *args):
@@ -964,7 +967,7 @@ class App:
 			thisUrl = 'http://%s:%s/%s/%s' %(self.camaddr, self.camwebport, thisPwd, FileTP)
 			if self.DebugMode:
 				self.DebugLog("FileDUrl", thisUrl)			
-			response = urllib2.urlopen(thisUrl)
+			response = urlopen(thisUrl)
 
 			total_size = response.info().getheader('Content-Length').strip()
 			total_size = int(total_size)
@@ -1234,7 +1237,7 @@ class App:
 
 	def FileUpload(self, *args):
 		self.FileToUpload = None
-		self.FileToUpload = tkFileDialog.askopenfile(mode='rb', title="Select a file to upload")
+		self.FileToUpload = filedialog.askopenfile(mode='rb', title="Select a file to upload")
 		if self.FileToUpload:
 			self.MainButtonControl.config(state=DISABLED)
 			self.MainButtonConfigure.config(state=DISABLED)
@@ -1284,7 +1287,7 @@ class App:
 			FilesToProcess = [self.ListboxFileName.get(idx) for idx in self.ListboxFileName.curselection()]
 			FilesToProcessStr = "\n".join(FilesToProcess)
 
-			if tkMessageBox.askyesno("Delete file", "Are you sure you want to DELETE\n\n%s\n\nThis action can't be undone!" %FilesToProcessStr):
+			if messagebox.askyesno("Delete file", "Are you sure you want to DELETE\n\n%s\n\nThis action can't be undone!" %FilesToProcessStr):
 				if self.ExpertMode == "":
 					tosend = '{"msg_id":1283,"token":%s,"param":"\/var\/www\/DCIM\/%s"}' %(self.token, self.MediaDir) #make sure we are still in the correct path
 					self.Comm(tosend)
