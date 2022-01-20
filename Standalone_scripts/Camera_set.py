@@ -10,25 +10,25 @@ from settings import camport
 srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 srv.connect((camaddr, camport))
 
-srv.send('{"msg_id":257,"token":0}')
+srv.send(b'{"msg_id":257,"token":0}')
 
 data = srv.recv(512)
-if "rval" in data:
-	token = re.findall('"param": (.+) }',data)[0]	
+if b"rval" in data:
+	token = re.findall(b'"param": (.+) }',data)[0]	
 else:
 	data = srv.recv(512)
-	if "rval" in data:
-		token = re.findall('"param": (.+) }',data)[0]	
+	if b"rval" in data:
+		token = re.findall(b'"param": (.+) }',data)[0]	
 
-filet = open("options.txt","r").read()
-if "\r\n" in filet:
-	filek = filet.split("\r\n")
+filet = open(b"options.txt","r").read()
+if b"\r\n" in filet:
+	filek = filet.split(b"\r\n")
 else:
-	filek = filet.split("\n")
+	filek = filet.split(b"\n")
 
 for line in filek:
 	if len(line) > 5:
-		if not line.startswith("#"):
+		if not line.startswith(b"#"):
 			tosend = line %token
 #			print tosend
 			srv.send(tosend)
